@@ -24,6 +24,11 @@ sys.path.insert(0, str(project_root))
 from hydra import HydraEngine
 from core.logger import Logger
 from core.config_loader import ConfigLoader
+from plugins.llm.factory import LLMFactory
+from modules.mimicry.content_strategy import MimicryContentStrategy
+from plugins.templates.jinja_renderer import JinjaRenderer
+from plugins.domain.domain_dispatcher import HydraDomainDispatcher
+from modules.seo.traffic_filter import TrafficFilter
 
 app = FastAPI(title="Hydra Command Center", version="1.0.0")
 
@@ -43,22 +48,65 @@ generation_status = {"running": False, "error": None}
 
 @app.on_event("startup")
 async def startup():
-    """启动时初始化"""
+    """启动时初始化（非阻塞）"""
     global engine
     try:
         if config_path.exists():
+            # 延迟初始化，避免阻塞启动
             engine = HydraEngine(str(config_path))
-            engine.initialize()
-            logger.info("Hydra Engine 初始化完成")
+            # 只做基本初始化，不检查 LLM 连接
+            try:
+                engine.config = engine.config_loader.load(str(config_path))
+                # 配置日志
+                log_config = engine.config.get("logging", {})
+                engine.logger.setup(
+                    log_level=log_config.get("level", "INFO"),
+                    log_file=log_config.get("file"),
+                    console_output=log_config.get("console", True)
+                )
+                logger.info("Hydra Engine 基础初始化完成（LLM 将在首次使用时连接）")
+            except Exception as e:
+                logger.warning(f"部分初始化失败: {e}，将在首次使用时重试")
         else:
             logger.warning(f"配置文件不存在: {config_path}")
     except Exception as e:
         logger.error(f"启动失败: {e}")
 
 
+async def ensure_engine_initialized():
+    """确保引擎完全初始化（延迟初始化）"""
+    global engine
+    if engine and not hasattr(engine, '_fully_initialized'):
+        try:
+            if not engine.llm_provider:
+                # 完整初始化（但不阻塞）
+                # 在后台线程中初始化 LLM，避免阻塞
+                import threading
+                def init_llm():
+                    try:
+                        llm_config = engine.config_loader.get_llm_config()
+                        engine.llm_provider = LLMFactory.get_provider(llm_config)
+                        engine.content_strategy = MimicryContentStrategy(engine.llm_provider)
+                        engine.template_renderer = JinjaRenderer(template_dir="templates")
+                        engine.domain_dispatcher = HydraDomainDispatcher()
+                        landing_page = engine.config.get("seo", {}).get("landing_page", "/")
+                        engine.traffic_filter = TrafficFilter(landing_page=landing_page)
+                        engine._fully_initialized = True
+                    except Exception as e:
+                        logger.warning(f"后台初始化失败: {e}")
+                
+                thread = threading.Thread(target=init_llm, daemon=True)
+                thread.start()
+        except Exception as e:
+            logger.warning(f"延迟初始化失败: {e}")
+
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     """仪表板首页"""
+    # 延迟初始化引擎（非阻塞）
+    await ensure_engine_initialized()
+    
     status = {
         "engine_ready": engine is not None,
         "config_exists": config_path.exists(),
@@ -67,12 +115,16 @@ async def dashboard(request: Request):
         "generation_error": generation_status["error"]
     }
     
-    # 检查 LLM 健康状态
+    # 检查 LLM 健康状态（快速检查，不阻塞）
     llm_health = False
     if engine and engine.llm_provider:
         try:
-            llm_health = await engine.llm_provider.health_check()
-        except:
+            # 设置较短的超时时间
+            llm_health = await asyncio.wait_for(
+                engine.llm_provider.health_check(),
+                timeout=2.0
+            )
+        except (asyncio.TimeoutError, Exception):
             pass
     
     status["llm_health"] = llm_health
@@ -179,6 +231,9 @@ async def toggle_feature(feature_path: str, request: Request):
 async def trigger_generation(background_tasks: BackgroundTasks):
     """触发站点生成"""
     global generation_task, generation_status, last_run_time
+    
+    # 确保引擎已初始化
+    await ensure_engine_initialized()
     
     if generation_status["running"]:
         return JSONResponse(
