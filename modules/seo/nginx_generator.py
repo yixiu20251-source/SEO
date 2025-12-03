@@ -124,13 +124,16 @@ server {{
         else:
             error_handler = self._generate_404_handler(traffic_filter, f"https://{base_domain}/")
         
+        # 转义域名中的点号（在 f-string 外计算，避免反斜杠问题）
+        escaped_domain = base_domain.replace('.', '\\.')
+        
         return f"""# HTTPS 服务器 - 通配符模式 (Swarm Mode)
 server {{
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
     
     # 使用正则表达式捕获子域名
-    server_name ~^(?<subdomain>.+)\\.{base_domain.replace('.', '\\.')}$;
+    server_name ~^(?<subdomain>.+)\\.{escaped_domain}$;
     
     # SSL 配置 - Cloudflare Origin CA
     ssl_certificate /etc/nginx/ssl/origin.pem;

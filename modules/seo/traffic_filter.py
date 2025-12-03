@@ -63,13 +63,15 @@ class TrafficFilter:
         Returns:
             Nginx 配置片段
         """
+        # 使用字符串格式化避免 f-string 中的注释问题
+        landing = self.landing_page
         config = f"""    # 404 处理 - 重定向到着陆页
-    error_page 404 =301 {self.landing_page};
+    error_page 404 =301 {landing};
     
     # 自定义 404 处理（如果需要更复杂的逻辑）
-    # location ~ ^/(?!api|static|assets) {
-    #     try_files $uri $uri/ =301 {self.landing_page};
-    # }
+    # location ~ ^/(?!api|static|assets) {{
+    #     try_files $uri $uri/ =301 {landing};
+    # }}
 """
         return config
 

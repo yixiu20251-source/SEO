@@ -1,0 +1,269 @@
+{% extends "layout.html" %}
+
+{% block title %}站点管理 - Hydra 九头蛇控制台{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold text-cyber-green cyber-glow">🌐 站点管理</h1>
+        <button
+            onclick="showAddSiteModal()"
+            class="px-6 py-3 bg-cyber-green text-black font-semibold rounded hover:bg-cyber-green/80 transition flex items-center space-x-2"
+        >
+            <span>+</span>
+            <span>添加新站点</span>
+        </button>
+    </div>
+    
+    <!-- Search Bar -->
+    <div class="mb-6">
+        <div class="relative max-w-md">
+            <input
+                type="text"
+                id="site-search"
+                placeholder="搜索站点..."
+                class="w-full bg-dark-panel border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white focus:border-cyber-green outline-none"
+                onkeyup="filterSites()"
+            >
+            <span class="absolute left-3 top-2.5 text-gray-500">🔍</span>
+        </div>
+    </div>
+    
+    <!-- Sites Table -->
+    <div class="bg-dark-panel cyber-border rounded-lg overflow-hidden">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-slate-800/50 text-gray-200">
+                <tr>
+                    <th class="px-6 py-4">域名</th>
+                    <th class="px-6 py-4">领域/上下文</th>
+                    <th class="px-6 py-4">角色</th>
+                    <th class="px-6 py-4">人物角色</th>
+                    <th class="px-6 py-4">状态</th>
+                    <th class="px-6 py-4 text-right">操作</th>
+                </tr>
+            </thead>
+            <tbody id="sites-table-body" class="divide-y divide-slate-800">
+                {% for site in sites %}
+                <tr class="site-row hover:bg-slate-800/30">
+                    <td class="px-6 py-4 text-white font-medium">{{ site.hostname }}</td>
+                    <td class="px-6 py-4 text-gray-400">{{ site.niche }}</td>
+                    <td class="px-6 py-4 text-gray-400">{{ site.role }}</td>
+                    <td class="px-6 py-4 text-gray-400">{{ site.persona }}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 rounded-full text-xs border {% if site.status == 'Active' %}bg-green-500/10 text-green-400 border-green-500/20{% else %}bg-yellow-500/10 text-yellow-400 border-yellow-500/20{% endif %}">
+                            {{ site.status }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="editSite({{ site.id }})" class="text-cyber-green hover:text-cyber-green/80 text-sm mr-3">编辑</button>
+                        <button onclick="deleteSite({{ site.id }})" class="text-red-400 hover:text-red-300 text-sm">删除</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if not sites %}
+        <div class="p-12 text-center text-gray-500">
+            <p class="mb-4">暂无站点</p>
+            <button onclick="showAddSiteModal()" class="px-4 py-2 bg-cyber-green/20 text-cyber-green rounded hover:bg-cyber-green/30 transition">
+                添加第一个站点
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Site Modal -->
+<div id="add-site-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+    <div class="bg-dark-panel cyber-border rounded-lg p-6 max-w-md w-full mx-4">
+        <h2 class="text-xl font-semibold text-cyber-green mb-4">添加新站点</h2>
+        
+        <form id="add-site-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">主机名</label>
+                <input
+                    type="text"
+                    name="hostname"
+                    required
+                    class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white focus:border-cyber-green outline-none"
+                    placeholder="example.com"
+                >
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">领域/伪装上下文</label>
+                <input
+                    type="text"
+                    name="mask_context"
+                    class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white focus:border-cyber-green outline-none"
+                    placeholder="Industrial Machinery"
+                >
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">角色</label>
+                <input
+                    type="text"
+                    name="role"
+                    class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white focus:border-cyber-green outline-none"
+                    placeholder="LandingPage"
+                >
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">人物角色</label>
+                <input
+                    type="text"
+                    name="persona"
+                    class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white focus:border-cyber-green outline-none"
+                    placeholder="Senior Engineer"
+                >
+            </div>
+            
+            <div class="flex justify-end space-x-3 pt-4">
+                <button
+                    type="button"
+                    onclick="hideAddSiteModal()"
+                    class="px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600 transition"
+                >
+                    取消
+                </button>
+                <button
+                    type="submit"
+                    class="px-4 py-2 bg-cyber-green text-black font-semibold rounded hover:bg-cyber-green/80 transition"
+                >
+                    添加
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function showAddSiteModal() {
+        isEditMode = false;
+        editSiteId = null;
+        document.getElementById('add-site-form').reset();
+        document.querySelector('#add-site-form button[type="submit"]').textContent = '添加';
+        document.getElementById('add-site-modal').classList.remove('hidden');
+    }
+    
+    function filterSites() {
+        const search = document.getElementById('site-search').value.toLowerCase();
+        const rows = document.querySelectorAll('.site-row');
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(search) ? '' : 'none';
+        });
+    }
+    
+    let isEditMode = false;
+    let editSiteId = null;
+    
+    document.getElementById('add-site-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData);
+        
+        try {
+            let response;
+            if (isEditMode && editSiteId !== null) {
+                // 更新模式
+                response = await fetch(`/api/sites/${editSiteId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+            } else {
+                // 添加模式
+                response = await fetch('/api/sites', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+            }
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast(isEditMode ? '站点已更新' : '站点已添加');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('错误: ' + result.error);
+            }
+        } catch (error) {
+            showToast((isEditMode ? '更新' : '添加') + '失败: ' + error);
+        }
+    });
+    
+    // 重置编辑模式
+    function hideAddSiteModal() {
+        document.getElementById('add-site-modal').classList.add('hidden');
+        document.getElementById('add-site-form').reset();
+        isEditMode = false;
+        editSiteId = null;
+        document.querySelector('#add-site-form button[type="submit"]').textContent = '添加';
+    }
+    
+    async function editSite(id) {
+        try {
+            // 获取站点信息
+            const response = await fetch(`/api/sites/${id}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                const site = result.site;
+                // 填充表单
+                document.querySelector('input[name="hostname"]').value = site.hostname || '';
+                document.querySelector('input[name="mask_context"]').value = site.mask_context || '';
+                document.querySelector('input[name="role"]').value = site.role || '';
+                document.querySelector('input[name="persona"]').value = site.persona || '';
+                
+                // 设置编辑模式
+                isEditMode = true;
+                editSiteId = id;
+                document.querySelector('#add-site-form button[type="submit"]').textContent = '更新';
+                
+                // 显示模态框
+                document.getElementById('add-site-modal').classList.remove('hidden');
+            } else {
+                showToast('获取站点信息失败');
+            }
+        } catch (error) {
+            showToast('编辑失败: ' + error);
+        }
+    }
+    
+    async function deleteSite(id) {
+        if (!confirm('确定要删除这个站点吗？此操作不可恢复！')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/sites/${id}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast('站点已删除');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('错误: ' + result.error);
+            }
+        } catch (error) {
+            showToast('删除失败: ' + error);
+        }
+    }
+    
+    // 自动刷新站点列表
+    setInterval(async () => {
+        try {
+            const response = await fetch('/api/sites');
+            const data = await response.json();
+            // 更新表格（简化版，实际应该更智能）
+        } catch (e) {}
+    }, 10000);
+</script>
+{% endblock %}
+

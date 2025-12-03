@@ -1,24 +1,71 @@
 {% extends "layout.html" %}
 
-{% block title %}Dashboard - Hydra Command Center{% endblock %}
+{% block title %}仪表盘 - Hydra 九头蛇控制台{% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto">
-    <h1 class="text-3xl font-bold text-cyber-green cyber-glow mb-8">Dashboard</h1>
+    <h1 class="text-3xl font-bold text-cyber-green cyber-glow mb-8">📊 仪表盘</h1>
+    
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" id="stats-cards">
+        <!-- 总文章数 -->
+        <div class="bg-dark-panel cyber-border rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 rounded-lg bg-slate-800 text-blue-400">
+                    <span class="text-2xl">📄</span>
+                </div>
+            </div>
+            <h3 class="text-3xl font-bold text-white mb-1" id="stat-articles">-</h3>
+            <p class="text-sm text-gray-400">总文章数</p>
+        </div>
+        
+        <!-- 总站点数 -->
+        <div class="bg-dark-panel cyber-border rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 rounded-lg bg-slate-800 text-green-400">
+                    <span class="text-2xl">🌐</span>
+                </div>
+            </div>
+            <h3 class="text-3xl font-bold text-white mb-1" id="stat-sites">-</h3>
+            <p class="text-sm text-gray-400">总站点数</p>
+        </div>
+        
+        <!-- 活跃站点 -->
+        <div class="bg-dark-panel cyber-border rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 rounded-lg bg-slate-800 text-orange-400">
+                    <span class="text-2xl">⚡</span>
+                </div>
+            </div>
+            <h3 class="text-3xl font-bold text-white mb-1" id="stat-active">-</h3>
+            <p class="text-sm text-gray-400">活跃站点</p>
+        </div>
+        
+        <!-- 今日生成 -->
+        <div class="bg-dark-panel cyber-border rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 rounded-lg bg-slate-800 text-purple-400">
+                    <span class="text-2xl">🚀</span>
+                </div>
+            </div>
+            <h3 class="text-3xl font-bold text-white mb-1" id="stat-today">-</h3>
+            <p class="text-sm text-gray-400">今日生成</p>
+        </div>
+    </div>
     
     <!-- Status Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <!-- Engine Status -->
         <div class="bg-dark-panel cyber-border rounded-lg p-6">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-300">Engine Status</h3>
+                <h3 class="text-lg font-semibold text-gray-300">引擎状态</h3>
                 <span class="w-3 h-3 rounded-full {% if status.engine_ready %}bg-cyber-green{% else %}bg-red-500{% endif %}"></span>
             </div>
             <p class="text-sm text-gray-400">
                 {% if status.engine_ready %}
-                    ✓ Ready
+                    ✓ 就绪
                 {% else %}
-                    ✗ Not Ready
+                    ✗ 未就绪
                 {% endif %}
             </p>
         </div>
@@ -26,14 +73,14 @@
         <!-- LLM Health -->
         <div class="bg-dark-panel cyber-border rounded-lg p-6">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-300">LLM Provider</h3>
+                <h3 class="text-lg font-semibold text-gray-300">LLM 提供者</h3>
                 <span class="w-3 h-3 rounded-full {% if status.llm_health %}bg-cyber-green{% else %}bg-yellow-500{% endif %}"></span>
             </div>
             <p class="text-sm text-gray-400">
                 {% if status.llm_health %}
-                    ✓ Healthy
+                    ✓ 健康
                 {% else %}
-                    ⚠ Check Connection
+                    ⚠ 检查连接
                 {% endif %}
             </p>
         </div>
@@ -41,16 +88,16 @@
         <!-- Generation Status -->
         <div class="bg-dark-panel cyber-border rounded-lg p-6">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-300">Generation</h3>
+                <h3 class="text-lg font-semibold text-gray-300">生成状态</h3>
                 <span class="w-3 h-3 rounded-full {% if status.generation_running %}bg-yellow-500 animate-pulse{% elif status.generation_error %}bg-red-500{% else %}bg-gray-500{% endif %}"></span>
             </div>
             <p class="text-sm text-gray-400">
                 {% if status.generation_running %}
-                    ⏳ Running...
+                    ⏳ 运行中...
                 {% elif status.generation_error %}
-                    ✗ Error
+                    ✗ 错误
                 {% else %}
-                    ✓ Idle
+                    ✓ 空闲
                 {% endif %}
             </p>
         </div>
@@ -58,7 +105,7 @@
     
     <!-- Action Center -->
     <div class="bg-dark-panel cyber-border rounded-lg p-6 mb-8">
-        <h2 class="text-xl font-semibold text-cyber-green mb-4">Action Center</h2>
+        <h2 class="text-xl font-semibold text-cyber-green mb-4">操作中心</h2>
         
         <div class="flex items-center gap-4">
             <button
@@ -71,9 +118,9 @@
             >
                 {% if status.generation_running %}
                     <span class="inline-block animate-spin mr-2">⏳</span>
-                    Generating...
+                    生成中...
                 {% else %}
-                    🚀 Generate Site
+                    🚀 生成站点
                 {% endif %}
             </button>
             
@@ -84,7 +131,7 @@
                 hx-trigger="every 2s"
                 class="px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600 transition"
             >
-                🔄 Refresh Status
+                🔄 刷新状态
             </button>
         </div>
         
@@ -94,7 +141,7 @@
     <!-- Last Run Info -->
     {% if status.last_run %}
     <div class="bg-dark-panel cyber-border rounded-lg p-6">
-        <h2 class="text-xl font-semibold text-cyber-green mb-4">Last Run</h2>
+        <h2 class="text-xl font-semibold text-cyber-green mb-4">上次运行</h2>
         <p class="text-gray-400">
             <span class="text-cyber-green">⏰</span>
             {{ status.last_run }}
@@ -112,6 +159,21 @@
 </div>
 
 <script>
+    // 加载统计数据
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/stats');
+            const stats = await response.json();
+            
+            document.getElementById('stat-articles').textContent = stats.total_articles || 0;
+            document.getElementById('stat-sites').textContent = stats.total_sites || 0;
+            document.getElementById('stat-active').textContent = stats.active_sites || 0;
+            document.getElementById('stat-today').textContent = stats.today_generated || 0;
+        } catch (error) {
+            console.error('加载统计数据失败:', error);
+        }
+    }
+    
     // Auto-refresh status every 5 seconds
     setInterval(() => {
         fetch('/status')
@@ -121,13 +183,18 @@
                 const generateBtn = document.getElementById('generate-btn');
                 if (data.generation_running) {
                     generateBtn.disabled = true;
-                    generateBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⏳</span> Generating...';
+                    generateBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⏳</span> 生成中...';
                 } else {
                     generateBtn.disabled = false;
-                    generateBtn.innerHTML = '🚀 Generate Site';
+                    generateBtn.innerHTML = '🚀 生成站点';
                 }
             });
+        
+        // 刷新统计数据
+        loadStats();
     }, 5000);
+    
+    // 初始加载
+    loadStats();
 </script>
 {% endblock %}
-

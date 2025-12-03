@@ -1,10 +1,10 @@
 {% extends "layout.html" %}
 
-{% block title %}Configuration - Hydra Command Center{% endblock %}
+{% block title %}系统设置 - Hydra 九头蛇控制台{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <h1 class="text-3xl font-bold text-cyber-green cyber-glow mb-8">Configuration</h1>
+<div class="max-w-6xl mx-auto">
+    <h1 class="text-3xl font-bold text-cyber-green cyber-glow mb-8">⚙️ 系统设置</h1>
     
     <form
         id="config-form"
@@ -13,48 +13,259 @@
         hx-swap="innerHTML"
         class="space-y-6"
     >
-        <!-- LLM Configuration -->
+        <!-- 项目基本信息 -->
         <div class="bg-dark-panel cyber-border rounded-lg p-6">
-            <h2 class="text-xl font-semibold text-cyber-green mb-4">LLM Provider</h2>
+            <h2 class="text-xl font-semibold text-cyber-green mb-4">📋 项目基本信息</h2>
             
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Provider</label>
-                    <select name="llm[provider]" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200">
-                        <option value="ollama" {% if config.get('llm', {}).get('provider') == 'ollama' %}selected{% endif %}>Ollama (Local)</option>
-                        <option value="openai" {% if config.get('llm', {}).get('provider') == 'openai' %}selected{% endif %}>OpenAI (Cloud)</option>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">项目名称</label>
+                    <input
+                        type="text"
+                        name="project_name"
+                        value="{{ config.get('project_name', 'Hydra SEO Project') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                        placeholder="Hydra SEO Project"
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">基础域名</label>
+                    <input
+                        type="text"
+                        name="base_domain"
+                        value="{{ config.get('base_domain', 'example.com') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                        placeholder="example.com"
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">运行模式</label>
+                    <select name="mode" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200">
+                        <option value="composite" {% if config.get('mode') == 'composite' %}selected{% endif %}>复合模式 (Composite) - 多子域名配置</option>
+                        <option value="swarm" {% if config.get('mode') == 'swarm' %}selected{% endif %}>集群模式 (Swarm) - 关键词自动生成</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- LLM 配置 -->
+        <div class="bg-dark-panel cyber-border rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-cyber-green mb-4">🤖 LLM 提供者配置</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">提供者类型</label>
+                    <select name="llm[provider]" id="llm-provider" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200">
+                        <option value="ollama" {% if config.get('llm', {}).get('provider') == 'ollama' %}selected{% endif %}>Ollama (本地)</option>
+                        <option value="openai" {% if config.get('llm', {}).get('provider') == 'openai' %}selected{% endif %}>OpenAI (云端)</option>
                     </select>
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">模型名称</label>
                     <input
                         type="text"
                         name="llm[model]"
                         value="{{ config.get('llm', {}).get('model', 'llama3') }}"
                         class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                        placeholder="llama3"
                     >
                 </div>
                 
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Base URL (Ollama only)</label>
+                <div id="ollama-config">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Base URL (仅 Ollama)</label>
                     <input
                         type="text"
                         name="llm[base_url]"
                         value="{{ config.get('llm', {}).get('base_url', 'http://localhost:11434') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                        placeholder="http://localhost:11434"
+                    >
+                </div>
+                
+                <div id="openai-config" style="display: none;">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">API Key (仅 OpenAI)</label>
+                    <input
+                        type="password"
+                        name="llm[api_key]"
+                        value="{{ config.get('llm', {}).get('api_key', '') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                        placeholder="sk-..."
+                    >
+                    <p class="text-xs text-gray-500 mt-1">或设置环境变量 OPENAI_API_KEY</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Temperature (0.0-2.0)</label>
+                    <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="2"
+                        name="llm[temperature]"
+                        value="{{ config.get('llm', {}).get('temperature', 0.7) }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">最大 Token 数</label>
+                    <input
+                        type="number"
+                        name="llm[max_tokens]"
+                        value="{{ config.get('llm', {}).get('max_tokens', 2048) }}"
                         class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
                     >
                 </div>
             </div>
         </div>
         
-        <!-- Cloudflare Configuration -->
+        <!-- 输出配置 -->
         <div class="bg-dark-panel cyber-border rounded-lg p-6">
-            <h2 class="text-xl font-semibold text-cyber-green mb-4">Cloudflare</h2>
+            <h2 class="text-xl font-semibold text-cyber-green mb-4">📁 输出配置</h2>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">输出目录</label>
+                <input
+                    type="text"
+                    name="output[path]"
+                    value="{{ config.get('output', {}).get('path', 'dist') }}"
+                    class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                    placeholder="dist"
+                >
+            </div>
+        </div>
+        
+        <!-- 默认内容策略 -->
+        <div class="bg-dark-panel cyber-border rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-cyber-green mb-4">🎭 默认内容策略</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">默认伪装上下文</label>
+                    <input
+                        type="text"
+                        name="default_mask_context"
+                        value="{{ config.get('default_mask_context', 'Industrial Machinery') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                        placeholder="Industrial Machinery"
+                    >
+                    <p class="text-xs text-gray-500 mt-1">用于语义伪装的主题领域</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">默认人物角色</label>
+                    <input
+                        type="text"
+                        name="default_persona"
+                        value="{{ config.get('default_persona', 'Senior Engineer') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                        placeholder="Senior Engineer"
+                    >
+                </div>
+            </div>
+        </div>
+        
+        <!-- 域名拓扑配置 (Composite Mode) -->
+        <div class="bg-dark-panel cyber-border rounded-lg p-6" id="topology-section">
+            <h2 class="text-xl font-semibold text-cyber-green mb-4">🌐 域名拓扑配置 (Composite Mode)</h2>
+            <p class="text-sm text-gray-400 mb-4">配置多个子域名及其策略</p>
+            
+            <div id="topology-list" class="space-y-4">
+                {% for topo in config.get('topology', []) %}
+                <div class="topology-item border border-gray-700 rounded p-4 bg-gray-900/50">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">主机名</label>
+                            <input type="text" name="topology[{{ loop.index0 }}][hostname]" value="{{ topo.get('hostname', '') }}" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">角色</label>
+                            <input type="text" name="topology[{{ loop.index0 }}][role]" value="{{ topo.get('role', '') }}" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">伪装上下文</label>
+                            <input type="text" name="topology[{{ loop.index0 }}][mask_context]" value="{{ topo.get('mask_context', '') }}" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">人物角色</label>
+                            <input type="text" name="topology[{{ loop.index0 }}][persona]" value="{{ topo.get('persona', '') }}" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200">
+                        </div>
+                    </div>
+                    <button type="button" onclick="this.closest('.topology-item').remove()" class="mt-2 text-red-400 hover:text-red-300 text-sm">删除</button>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="button" onclick="addTopologyItem()" class="mt-4 px-4 py-2 bg-cyber-green/20 text-cyber-green rounded hover:bg-cyber-green/30 transition">+ 添加域名</button>
+        </div>
+        
+        <!-- Swarm Mode 配置 -->
+        <div class="bg-dark-panel cyber-border rounded-lg p-6" id="swarm-section">
+            <h2 class="text-xl font-semibold text-cyber-green mb-4">🐝 Swarm Mode 配置</h2>
+            <p class="text-sm text-gray-400 mb-4">关键词列表，每个关键词会映射到 keyword.base_domain</p>
+            
+            <div id="keywords-list" class="space-y-2">
+                {% for keyword in config.get('swarm', {}).get('keywords', []) %}
+                <div class="keyword-item flex gap-2">
+                    <input type="text" name="swarm[keywords][]" value="{{ keyword }}" class="flex-1 bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200">
+                    <button type="button" onclick="this.closest('.keyword-item').remove()" class="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700">删除</button>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="button" onclick="addKeyword()" class="mt-4 px-4 py-2 bg-cyber-green/20 text-cyber-green rounded hover:bg-cyber-green/30 transition">+ 添加关键词</button>
+        </div>
+        
+        <!-- SEO 配置 -->
+        <div class="bg-dark-panel cyber-border rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-cyber-green mb-4">🔍 SEO 配置</h2>
             
             <div class="space-y-4">
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-medium text-gray-300">Enabled</label>
+                    <label class="text-sm font-medium text-gray-300">生成站点地图</label>
+                    <label class="toggle-switch">
+                        <input
+                            type="checkbox"
+                            name="seo[generate_sitemap]"
+                            {% if config.get('seo', {}).get('generate_sitemap') %}checked{% endif %}
+                            hx-post="/toggle/seo.generate_sitemap"
+                            hx-trigger="change"
+                            hx-vals='{"value": this.checked}'
+                        >
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">默认着陆页</label>
+                    <input
+                        type="text"
+                        name="seo[landing_page]"
+                        value="{{ config.get('seo', {}).get('landing_page', '/') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">每页最大内部链接数</label>
+                    <input
+                        type="number"
+                        name="seo[max_internal_links]"
+                        value="{{ config.get('seo', {}).get('max_internal_links', 5) }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                    >
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cloudflare 配置 -->
+        <div class="bg-dark-panel cyber-border rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-cyber-green mb-4">☁️ Cloudflare 配置</h2>
+            
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium text-gray-300">启用 Cloudflare 自动化</label>
                     <label class="toggle-switch">
                         <input
                             type="checkbox"
@@ -69,7 +280,7 @@
                 </div>
                 
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-medium text-gray-300">Proxied</label>
+                    <label class="text-sm font-medium text-gray-300">DNS 记录通过代理</label>
                     <label class="toggle-switch">
                         <input
                             type="checkbox"
@@ -106,7 +317,18 @@
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Server IP</label>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">账户邮箱</label>
+                    <input
+                        type="email"
+                        name="cloudflare[email]"
+                        value="{{ config.get('cloudflare', {}).get('email', '') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                        placeholder="your@email.com"
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">服务器公网 IP</label>
                     <input
                         type="text"
                         name="cloudflare[server_ip]"
@@ -118,44 +340,45 @@
             </div>
         </div>
         
-        <!-- SEO Configuration -->
+        <!-- 日志配置 -->
         <div class="bg-dark-panel cyber-border rounded-lg p-6">
-            <h2 class="text-xl font-semibold text-cyber-green mb-4">SEO Settings</h2>
+            <h2 class="text-xl font-semibold text-cyber-green mb-4">📜 日志配置</h2>
             
             <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">日志级别</label>
+                    <select name="logging[level]" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200">
+                        <option value="DEBUG" {% if config.get('logging', {}).get('level') == 'DEBUG' %}selected{% endif %}>DEBUG</option>
+                        <option value="INFO" {% if config.get('logging', {}).get('level') == 'INFO' %}selected{% endif %}>INFO</option>
+                        <option value="WARNING" {% if config.get('logging', {}).get('level') == 'WARNING' %}selected{% endif %}>WARNING</option>
+                        <option value="ERROR" {% if config.get('logging', {}).get('level') == 'ERROR' %}selected{% endif %}>ERROR</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">日志文件路径</label>
+                    <input
+                        type="text"
+                        name="logging[file]"
+                        value="{{ config.get('logging', {}).get('file', 'hydra.log') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                        placeholder="hydra.log"
+                    >
+                </div>
+                
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-medium text-gray-300">Generate Sitemap</label>
+                    <label class="text-sm font-medium text-gray-300">输出到控制台</label>
                     <label class="toggle-switch">
                         <input
                             type="checkbox"
-                            name="seo[generate_sitemap]"
-                            {% if config.get('seo', {}).get('generate_sitemap') %}checked{% endif %}
-                            hx-post="/toggle/seo.generate_sitemap"
+                            name="logging[console]"
+                            {% if config.get('logging', {}).get('console', true) %}checked{% endif %}
+                            hx-post="/toggle/logging.console"
                             hx-trigger="change"
                             hx-vals='{"value": this.checked}'
                         >
                         <span class="toggle-slider"></span>
                     </label>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Landing Page</label>
-                    <input
-                        type="text"
-                        name="seo[landing_page]"
-                        value="{{ config.get('seo', {}).get('landing_page', '/') }}"
-                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
-                    >
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Max Internal Links</label>
-                    <input
-                        type="number"
-                        name="seo[max_internal_links]"
-                        value="{{ config.get('seo', {}).get('max_internal_links', 5) }}"
-                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
-                    >
                 </div>
             </div>
         </div>
@@ -166,12 +389,78 @@
                 type="submit"
                 class="px-6 py-3 bg-cyber-green text-black font-semibold rounded hover:bg-cyber-green/80 transition"
             >
-                💾 Save Configuration
+                💾 保存配置
             </button>
         </div>
         
-        <div id="save-result"></div>
+        <div id="save-result" class="mt-4"></div>
     </form>
 </div>
-{% endblock %}
 
+<script>
+    // 根据 LLM 提供者显示/隐藏配置
+    document.getElementById('llm-provider').addEventListener('change', function() {
+        const provider = this.value;
+        document.getElementById('ollama-config').style.display = provider === 'ollama' ? 'block' : 'none';
+        document.getElementById('openai-config').style.display = provider === 'openai' ? 'block' : 'none';
+    });
+    
+    // 初始化显示
+    const currentProvider = document.getElementById('llm-provider').value;
+    document.getElementById('ollama-config').style.display = currentProvider === 'ollama' ? 'block' : 'none';
+    document.getElementById('openai-config').style.display = currentProvider === 'openai' ? 'block' : 'none';
+    
+    // 根据模式显示/隐藏配置
+    const mode = document.querySelector('select[name="mode"]').value;
+    document.getElementById('topology-section').style.display = mode === 'composite' ? 'block' : 'none';
+    document.getElementById('swarm-section').style.display = mode === 'swarm' ? 'block' : 'none';
+    
+    document.querySelector('select[name="mode"]').addEventListener('change', function() {
+        const mode = this.value;
+        document.getElementById('topology-section').style.display = mode === 'composite' ? 'block' : 'none';
+        document.getElementById('swarm-section').style.display = mode === 'swarm' ? 'block' : 'none';
+    });
+    
+    // 添加拓扑项
+    function addTopologyItem() {
+        const list = document.getElementById('topology-list');
+        const index = list.children.length;
+        const item = document.createElement('div');
+        item.className = 'topology-item border border-gray-700 rounded p-4 bg-gray-900/50';
+        item.innerHTML = `
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">主机名</label>
+                    <input type="text" name="topology[${index}][hostname]" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">角色</label>
+                    <input type="text" name="topology[${index}][role]" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">伪装上下文</label>
+                    <input type="text" name="topology[${index}][mask_context]" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">人物角色</label>
+                    <input type="text" name="topology[${index}][persona]" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200">
+                </div>
+            </div>
+            <button type="button" onclick="this.closest('.topology-item').remove()" class="mt-2 text-red-400 hover:text-red-300 text-sm">删除</button>
+        `;
+        list.appendChild(item);
+    }
+    
+    // 添加关键词
+    function addKeyword() {
+        const list = document.getElementById('keywords-list');
+        const item = document.createElement('div');
+        item.className = 'keyword-item flex gap-2';
+        item.innerHTML = `
+            <input type="text" name="swarm[keywords][]" class="flex-1 bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200" placeholder="关键词">
+            <button type="button" onclick="this.closest('.keyword-item').remove()" class="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700">删除</button>
+        `;
+        list.appendChild(item);
+    }
+</script>
+{% endblock %}

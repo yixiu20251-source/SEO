@@ -1,19 +1,19 @@
 {% extends "layout.html" %}
 
-{% block title %}Logs - Hydra Command Center{% endblock %}
+{% block title %}运行日志 - Hydra 九头蛇控制台{% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto">
-    <h1 class="text-3xl font-bold text-cyber-green cyber-glow mb-8">Log Viewer</h1>
+    <h1 class="text-3xl font-bold text-cyber-green cyber-glow mb-8">📜 运行日志</h1>
     
     <div class="bg-dark-panel cyber-border rounded-lg p-6">
         <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-semibold text-cyber-green">Real-time Logs</h2>
+            <h2 class="text-xl font-semibold text-cyber-green">实时日志流</h2>
             <button
                 id="clear-logs"
                 class="px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600 transition"
             >
-                🗑️ Clear
+                🗑️ 清空日志
             </button>
         </div>
         
@@ -25,7 +25,7 @@
             hx-trigger="every 2s"
             hx-swap="innerHTML"
         >
-            <div class="text-gray-500">Loading logs...</div>
+            <div class="text-gray-500">正在加载日志...</div>
         </div>
     </div>
 </div>
@@ -40,11 +40,11 @@
             if (response.lines) {
                 const html = response.lines.map(line => {
                     let color = 'text-cyber-green';
-                    if (line.includes('ERROR') || line.includes('error')) {
+                    if (line.includes('ERROR') || line.includes('error') || line.includes('错误')) {
                         color = 'text-red-400';
-                    } else if (line.includes('WARNING') || line.includes('warning')) {
+                    } else if (line.includes('WARNING') || line.includes('warning') || line.includes('警告')) {
                         color = 'text-yellow-400';
-                    } else if (line.includes('INFO') || line.includes('info')) {
+                    } else if (line.includes('INFO') || line.includes('info') || line.includes('信息')) {
                         color = 'text-cyber-blue';
                     }
                     return `<div class="${color}">${escapeHtml(line)}</div>`;
@@ -62,8 +62,7 @@
     }
     
     document.getElementById('clear-logs').addEventListener('click', function() {
-        document.getElementById('log-console').innerHTML = '<div class="text-gray-500">Logs cleared</div>';
+        document.getElementById('log-console').innerHTML = '<div class="text-gray-500">日志已清空</div>';
     });
 </script>
 {% endblock %}
-

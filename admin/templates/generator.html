@@ -1,0 +1,467 @@
+{% extends "layout.html" %}
+
+{% block title %}内容生产工厂 - Hydra 九头蛇控制台{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <h1 class="text-3xl font-bold text-cyber-green cyber-glow mb-8">⚡ 内容生产工厂</h1>
+    
+    <!-- Mode Switcher -->
+    <div class="flex space-x-2 bg-dark-panel p-1 rounded-lg border border-gray-700 w-fit mb-6">
+        <button
+            id="mode-single"
+            onclick="switchMode('single')"
+            class="px-4 py-2 rounded-md text-sm font-medium transition-all mode-btn"
+        >
+            单篇精修模式
+        </button>
+        <button
+            id="mode-batch"
+            onclick="switchMode('batch')"
+            class="px-4 py-2 rounded-md text-sm font-medium transition-all mode-btn flex items-center space-x-2"
+        >
+            <span>📋</span>
+            <span>批量站群模式</span>
+        </button>
+    </div>
+    
+    <!-- Single Mode -->
+    <div id="single-mode" class="mode-panel">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Input Panel -->
+            <div class="bg-dark-panel cyber-border rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">单篇生成参数</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-gray-400 text-sm mb-1 block">文章标题</label>
+                        <input
+                            type="text"
+                            id="single-topic"
+                            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-cyber-green outline-none"
+                            placeholder="输入文章标题..."
+                        >
+                    </div>
+                    <div>
+                        <label class="text-gray-400 text-sm mb-1 block">关键词 (Keywords)</label>
+                        <input
+                            type="text"
+                            id="single-keywords"
+                            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-cyber-green outline-none"
+                            placeholder="seo, ai tools..."
+                        >
+                    </div>
+                    <div>
+                        <label class="text-gray-400 text-sm mb-1 block">目标站点</label>
+                        <select
+                            id="single-site"
+                            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-cyber-green outline-none"
+                        >
+                            {% if sites %}
+                                {% for site in sites %}
+                                <option value="{{ site.id }}">{{ site.hostname }} ({{ site.niche }})</option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="">暂无站点，请先添加站点</option>
+                            {% endif %}
+                        </select>
+                        {% if not sites %}
+                        <p class="text-yellow-400 text-xs mt-2">⚠️ 请先在"站点管理"页面添加站点</p>
+                        {% endif %}
+                    </div>
+                    <button
+                        onclick="generateSingle()"
+                        id="single-generate-btn"
+                        class="w-full bg-cyber-green hover:bg-cyber-green/80 text-black py-2 rounded-lg font-medium transition disabled:opacity-50"
+                    >
+                        开始生成
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Preview Panel -->
+            <div class="bg-dark-panel cyber-border rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">预览结果</h3>
+                <div id="single-preview" class="prose prose-invert prose-sm max-w-none">
+                    <div class="text-gray-500 flex items-center justify-center h-40">暂无内容</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Batch Mode -->
+    <div id="batch-mode" class="mode-panel hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left: Input Config -->
+            <div class="lg:col-span-1">
+                <div class="bg-dark-panel cyber-border rounded-lg p-6 h-full flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-white">批量任务配置</h3>
+                        <span class="text-gray-500">💻</span>
+                    </div>
+                    
+                    <div class="space-y-4 flex-1">
+                        <div>
+                            <label class="text-gray-400 text-sm mb-1 block">目标站点</label>
+                            <select
+                                id="batch-site"
+                                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white outline-none focus:border-purple-500"
+                            >
+                                {% if sites %}
+                                    {% for site in sites %}
+                                    <option value="{{ site.id }}">{{ site.hostname }} ({{ site.niche }})</option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="">暂无站点，请先添加站点</option>
+                                {% endif %}
+                            </select>
+                            {% if not sites %}
+                            <p class="text-yellow-400 text-xs mt-2">⚠️ 请先在"站点管理"页面添加站点</p>
+                            {% endif %}
+                        </div>
+                        
+                        <div>
+                            <label class="text-gray-400 text-sm mb-1 block">AI 语气/风格</label>
+                            <select
+                                id="batch-tone"
+                                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white outline-none focus:border-purple-500"
+                            >
+                                <option value="Professional">Professional (专业权威)</option>
+                                <option value="Casual">Casual (轻松博客)</option>
+                                <option value="News">Journalistic (新闻报道)</option>
+                                <option value="Review">Product Review (产品评测)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex-1 flex flex-col">
+                            <label class="text-gray-400 text-sm mb-1 block">关键词列表 (每行一个)</label>
+                            <textarea
+                                id="batch-keywords"
+                                class="flex-1 min-h-[200px] w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-purple-500 outline-none font-mono text-sm resize-none"
+                                placeholder="best coffee machine 2025&#10;how to brew espresso&#10;coffee beans guide..."
+                            ></textarea>
+                            <div class="text-right text-xs text-gray-500 mt-1">
+                                <span id="keyword-count">0</span> 个任务待添加
+                            </div>
+                        </div>
+                        
+                        <button
+                            onclick="addToQueue()"
+                            id="add-queue-btn"
+                            class="w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-lg font-medium border border-slate-700 transition-colors"
+                        >
+                            + 添加到队列
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right: Queue Monitor -->
+            <div class="lg:col-span-2 bg-dark-panel cyber-border rounded-lg flex flex-col overflow-hidden">
+                <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-slate-800/30">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-purple-400">📋</span>
+                        <h3 class="font-semibold text-white">生成队列监控</h3>
+                        <span class="bg-slate-800 text-gray-400 text-xs px-2 py-1 rounded-full border border-slate-700">
+                            Total: <span id="queue-total">0</span>
+                        </span>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button onclick="clearCompleted()" class="text-gray-400 hover:text-white text-sm">清空完成</button>
+                        <button
+                            onclick="startBatch()"
+                            id="start-batch-btn"
+                            class="px-4 py-1.5 rounded-lg text-sm font-bold flex items-center space-x-2 transition-all bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/40"
+                        >
+                            <span>▶</span>
+                            <span>启动批量生成</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-900 text-gray-500 sticky top-0 z-10">
+                            <tr>
+                                <th class="px-6 py-3 font-medium">ID</th>
+                                <th class="px-6 py-3 font-medium">关键词 / 标题</th>
+                                <th class="px-6 py-3 font-medium">目标站点</th>
+                                <th class="px-6 py-3 font-medium">状态</th>
+                                <th class="px-6 py-3 font-medium text-right">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="queue-tbody" class="divide-y divide-slate-800">
+                            <tr>
+                                <td colspan="5" class="px-6 py-12 text-center text-gray-600">
+                                    <div class="flex flex-col items-center space-y-3">
+                                        <span class="text-4xl opacity-20">📋</span>
+                                        <p>队列为空，请从左侧添加关键词任务</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentMode = 'single';
+    let batchQueue = [];
+    
+    function switchMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-panel').forEach(p => p.classList.add('hidden'));
+        document.querySelectorAll('.mode-btn').forEach(b => {
+            b.classList.remove('bg-cyber-green', 'text-black');
+            b.classList.add('text-gray-400');
+        });
+        
+        if (mode === 'single') {
+            document.getElementById('single-mode').classList.remove('hidden');
+            document.getElementById('mode-single').classList.add('bg-cyber-green', 'text-black');
+            document.getElementById('mode-single').classList.remove('text-gray-400');
+        } else {
+            document.getElementById('batch-mode').classList.remove('hidden');
+            document.getElementById('mode-batch').classList.add('bg-purple-600', 'text-white');
+            document.getElementById('mode-batch').classList.remove('text-gray-400');
+            loadQueue();
+        }
+    }
+    
+    // Single Mode
+    async function generateSingle() {
+        const topic = document.getElementById('single-topic').value;
+        const keywords = document.getElementById('single-keywords').value;
+        const siteSelect = document.getElementById('single-site');
+        const siteId = siteSelect.value ? parseInt(siteSelect.value) : null;
+        
+        if (!topic) {
+            showToast('请输入文章标题');
+            return;
+        }
+        
+        if (siteId === null || isNaN(siteId)) {
+            showToast('请先选择目标站点，或前往"站点管理"添加站点');
+            return;
+        }
+        
+        const btn = document.getElementById('single-generate-btn');
+        btn.disabled = true;
+        btn.textContent = '生成中...';
+        
+        const preview = document.getElementById('single-preview');
+        preview.innerHTML = '<div class="text-gray-500 flex items-center justify-center h-40"><span class="animate-spin mr-2">⏳</span> AI 正在生成内容...</div>';
+        
+        try {
+            const response = await fetch('/api/generator/single', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    topic: topic,
+                    keywords: keywords,
+                    site_id: siteId
+                })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                const data = result.data;
+                preview.innerHTML = `
+                    <div class="prose prose-invert prose-sm max-w-none">
+                        <h2 class="text-white text-2xl font-bold mb-4">${data.title}</h2>
+                        <div class="text-gray-300 mb-4">
+                            <p class="text-sm text-gray-400 mb-2">关键词: ${data.keywords || '无'}</p>
+                            <p class="text-sm text-gray-400 mb-4">URL: <a href="${data.url}" target="_blank" class="text-cyber-green hover:underline">${data.url}</a></p>
+                        </div>
+                        <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                            <h3 class="text-white font-semibold mb-2">内容预览（前500字符）:</h3>
+                            <div class="text-gray-300 whitespace-pre-wrap">${data.content}</div>
+                        </div>
+                        <div class="mt-4 p-3 bg-green-500/10 border border-green-500/30 rounded text-green-400 text-sm">
+                            ✓ 内容已生成并保存到站点
+                        </div>
+                    </div>
+                `;
+                showToast('内容生成成功！');
+            } else {
+                preview.innerHTML = `<div class="text-red-400 p-4 bg-red-500/10 border border-red-500/30 rounded">错误: ${result.error}</div>`;
+                showToast('生成失败: ' + result.error);
+            }
+        } catch (error) {
+            preview.innerHTML = `<div class="text-red-400 p-4 bg-red-500/10 border border-red-500/30 rounded">生成失败: ${error}</div>`;
+            showToast('生成失败: ' + error);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '开始生成';
+        }
+    }
+    
+    // Batch Mode
+    function updateKeywordCount() {
+        const text = document.getElementById('batch-keywords').value;
+        const count = text.split('\n').filter(l => l.trim()).length;
+        document.getElementById('keyword-count').textContent = count;
+    }
+    
+    document.getElementById('batch-keywords').addEventListener('input', updateKeywordCount);
+    
+    async function addToQueue() {
+        const siteSelect = document.getElementById('batch-site');
+        const siteId = siteSelect.value ? parseInt(siteSelect.value) : null;
+        
+        if (siteId === null || isNaN(siteId)) {
+            showToast('请先选择目标站点，或前往"站点管理"添加站点');
+            return;
+        }
+        const keywords = document.getElementById('batch-keywords').value;
+        const siteId = parseInt(document.getElementById('batch-site').value);
+        const tone = document.getElementById('batch-tone').value;
+        
+        if (!keywords.trim()) {
+            showToast('请输入关键词');
+            return;
+        }
+        
+        const keywordList = keywords.split('\n').filter(k => k.trim());
+        
+        try {
+            const response = await fetch('/api/generator/batch', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    keywords: keywordList,
+                    site_id: siteId,
+                    tone: tone
+                })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast(result.message);
+                document.getElementById('batch-keywords').value = '';
+                updateKeywordCount();
+                loadQueue();
+            } else {
+                showToast('错误: ' + result.error);
+            }
+        } catch (error) {
+            showToast('添加失败: ' + error);
+        }
+    }
+    
+    async function loadQueue() {
+        try {
+            const response = await fetch('/api/generator/queue');
+            const data = await response.json();
+            batchQueue = data.queue || [];
+            renderQueue();
+        } catch (error) {
+            console.error('加载队列失败:', error);
+        }
+    }
+    
+    function renderQueue() {
+        const tbody = document.getElementById('queue-tbody');
+        document.getElementById('queue-total').textContent = batchQueue.length;
+        
+        if (batchQueue.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="px-6 py-12 text-center text-gray-600">
+                        <div class="flex flex-col items-center space-y-3">
+                            <span class="text-4xl opacity-20">📋</span>
+                            <p>队列为空，请从左侧添加关键词任务</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = batchQueue.map(item => {
+            const statusMap = {
+                'pending': '<span class="text-gray-500">⏸ 等待中</span>',
+                'processing': '<span class="text-purple-400">⏳ 生成中</span>',
+                'done': '<span class="text-green-400">✓ 已完成</span>',
+                'error': '<span class="text-red-400">✗ 错误</span>'
+            };
+            
+            return `
+                <tr class="hover:bg-slate-800/50">
+                    <td class="px-6 py-3 text-gray-500 font-mono text-xs">#${item.id.toString().slice(-4)}</td>
+                    <td class="px-6 py-3 text-gray-300 font-medium">${item.keyword}</td>
+                    <td class="px-6 py-3 text-gray-500 text-xs">站点 ${item.site_id}</td>
+                    <td class="px-6 py-3">${statusMap[item.status] || statusMap.pending}</td>
+                    <td class="px-6 py-3 text-right">
+                        ${item.status === 'done' ? '<button class="text-cyber-green hover:text-white text-xs">预览</button>' : ''}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    async function startBatch() {
+        const btn = document.getElementById('start-batch-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="animate-spin">⏳</span> <span>AI 处理中...</span>';
+        
+        try {
+            const response = await fetch('/api/generator/start', {
+                method: 'POST'
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast('批量生成已启动');
+                // 开始轮询队列状态
+                const interval = setInterval(() => {
+                    loadQueue();
+                    // 检查是否完成
+                    if (batchQueue.every(t => t.status === 'done' || t.status === 'error')) {
+                        clearInterval(interval);
+                        btn.disabled = false;
+                        btn.innerHTML = '<span>▶</span> <span>启动批量生成</span>';
+                    }
+                }, 2000);
+            } else {
+                showToast('错误: ' + result.message);
+                btn.disabled = false;
+                btn.innerHTML = '<span>▶</span> <span>启动批量生成</span>';
+            }
+        } catch (error) {
+            showToast('启动失败: ' + error);
+            btn.disabled = false;
+            btn.innerHTML = '<span>▶</span> <span>启动批量生成</span>';
+        }
+    }
+    
+    async function clearCompleted() {
+        if (!confirm('确定要清空所有已完成和失败的任务吗？')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/generator/queue/clear', {
+                method: 'POST'
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast(result.message);
+                loadQueue();
+            } else {
+                showToast('错误: ' + result.error);
+            }
+        } catch (error) {
+            showToast('清空失败: ' + error);
+        }
+    }
+    
+    // 初始化
+    switchMode('single');
+    setInterval(loadQueue, 5000); // 每5秒刷新队列
+</script>
+{% endblock %}
+
