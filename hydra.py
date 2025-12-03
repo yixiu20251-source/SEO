@@ -93,6 +93,24 @@ class HydraEngine:
         
         self.logger.info("所有组件初始化完成")
     
+    async def shutdown(self):
+        """
+        关闭所有资源，清理HTTP客户端连接
+        
+        应该在程序退出前调用此方法以确保资源正确释放
+        """
+        self.logger.info("正在关闭资源...")
+        
+        # 关闭 LLM 提供者的 HTTP 客户端
+        if self.llm_provider and hasattr(self.llm_provider, 'client'):
+            try:
+                await self.llm_provider.client.aclose()
+                self.logger.info("LLM 提供者 HTTP 客户端已关闭")
+            except Exception as e:
+                self.logger.warning(f"关闭 LLM 提供者客户端时出错: {e}")
+        
+        self.logger.info("资源关闭完成")
+    
     async def health_check(self):
         """健康检查"""
         self.logger.info("执行健康检查...")
@@ -344,63 +362,104 @@ class HydraEngine:
         # Pass 1: 规划阶段
         page_plans = self._plan_pages()
         
-        # Pass 2: 生成阶段
+        # Pass 2: 生成阶段（并发）
         self.logger.info("=" * 60)
-        self.logger.info("Pass 2: 生成阶段 - 生成内容和链接")
+        self.logger.info("Pass 2: 生成阶段 - 生成内容和链接（并发模式）")
         self.logger.info("=" * 60)
         
-        # 生成所有页面内容并收集元数据
-        generated_pages: List[Dict[str, Any]] = []
+        # 创建信号量限制并发数（最多5个并发任务）
+        semaphore = asyncio.Semaphore(5)
+        
+        async def generate_content_worker(plan: Dict[str, Any]) -> Dict[str, Any]:
+            """并发工作函数：生成单个页面内容"""
+            async with semaphore:
+                try:
+                    # 生成内容
+                    page_data = await self.generate_content(
+                        keyword=plan["keyword"],
+                        hostname=plan["hostname"],
+                        mask_context=plan["mask_context"],
+                        persona=plan["persona"]
+                    )
+                    
+                    # 添加 URL 到页面数据
+                    page_data["url"] = plan["url"]
+                    return page_data
+                except Exception as e:
+                    self.logger.error(f"生成页面内容失败 {plan.get('url', 'unknown')}: {e}")
+                    raise
+        
+        # 并发生成所有页面内容
+        self.logger.info(f"开始并发生成 {len(page_plans)} 个页面...")
+        content_tasks = [generate_content_worker(plan) for plan in page_plans]
+        generated_pages = await asyncio.gather(*content_tasks, return_exceptions=True)
+        
+        # 处理异常结果
+        valid_pages: List[Dict[str, Any]] = []
         all_pages_metadata: List[Dict[str, Any]] = []
         
-        for plan in page_plans:
-            # 生成内容
-            page_data = await self.generate_content(
-                keyword=plan["keyword"],
-                hostname=plan["hostname"],
-                mask_context=plan["mask_context"],
-                persona=plan["persona"]
-            )
+        for i, result in enumerate(generated_pages):
+            if isinstance(result, Exception):
+                self.logger.error(f"页面生成失败: {page_plans[i].get('url', 'unknown')}, 错误: {result}")
+                continue
             
-            # 添加 URL 到页面数据
-            page_data["url"] = plan["url"]
-            generated_pages.append(page_data)
+            valid_pages.append(result)
             
             # 收集页面元数据（用于链接生成）
             all_pages_metadata.append({
-                "url": plan["url"],
-                "title": page_data.get("title"),
-                "mask_context": plan["mask_context"],
-                "hostname": plan["hostname"]
+                "url": result["url"],
+                "title": result.get("title"),
+                "mask_context": page_plans[i]["mask_context"],
+                "hostname": page_plans[i]["hostname"]
             })
         
-        # 再次遍历，生成链接并渲染页面
-        for i, plan in enumerate(page_plans):
-            page_data = generated_pages[i]
-            
-            # 生成上下文相关的链接
-            max_links = self.config.get("seo", {}).get("max_internal_links", 5)
-            related_links = self.link_mesh.generate_contextual_links(
-                current_url=plan["url"],
-                all_pages=all_pages_metadata,
-                max_links=max_links
-            )
-            
-            # 转换链接格式为模板需要的格式
-            formatted_links = [
-                {
-                    "url": link["url"],
-                    "title": link["title"],
-                    "description": f"了解更多关于 {link.get('title', '')} 的信息"
-                }
-                for link in related_links
-            ]
-            
-            # 渲染页面（包含相关链接）
-            html = await self.render_page(page_data, related_links=formatted_links)
-            
-            # 保存页面
-            self.save_page(html, plan["hostname"], plan["path"])
+        self.logger.info(f"内容生成完成: {len(valid_pages)}/{len(page_plans)} 个页面成功")
+        
+        # Pass 3: 链接生成和渲染阶段（并发）
+        self.logger.info("=" * 60)
+        self.logger.info("Pass 3: 链接生成和渲染阶段（并发模式）")
+        self.logger.info("=" * 60)
+        
+        async def render_page_worker(plan: Dict[str, Any], page_data: Dict[str, Any]) -> None:
+            """并发工作函数：生成链接并渲染页面"""
+            async with semaphore:
+                try:
+                    # 生成上下文相关的链接
+                    max_links = self.config.get("seo", {}).get("max_internal_links", 5)
+                    related_links = self.link_mesh.generate_contextual_links(
+                        current_url=plan["url"],
+                        all_pages=all_pages_metadata,
+                        max_links=max_links
+                    )
+                    
+                    # 转换链接格式为模板需要的格式
+                    formatted_links = [
+                        {
+                            "url": link["url"],
+                            "title": link["title"],
+                            "description": f"了解更多关于 {link.get('title', '')} 的信息"
+                        }
+                        for link in related_links
+                    ]
+                    
+                    # 渲染页面（包含相关链接）
+                    html = await self.render_page(page_data, related_links=formatted_links)
+                    
+                    # 保存页面
+                    self.save_page(html, plan["hostname"], plan["path"])
+                except Exception as e:
+                    self.logger.error(f"渲染页面失败 {plan.get('url', 'unknown')}: {e}")
+                    raise
+        
+        # 并发渲染所有页面
+        self.logger.info(f"开始并发渲染 {len(valid_pages)} 个页面...")
+        render_tasks = [
+            render_page_worker(page_plans[i], valid_pages[i])
+            for i in range(len(valid_pages))
+        ]
+        await asyncio.gather(*render_tasks, return_exceptions=True)
+        
+        self.logger.info("页面渲染完成")
         
         # Cloudflare DNS 自动化（如果启用）
         cloudflare_config = self.config.get("cloudflare", {})
@@ -510,17 +569,19 @@ async def main():
         await engine.health_check()
         
         if args.health_check:
-            sys.exit(0)
+            return
         
         # 生成站点
         await engine.generate_site()
         
     except KeyboardInterrupt:
         engine.logger.info("用户中断")
-        sys.exit(1)
     except Exception as e:
         engine.logger.error(f"执行失败: {e}", exc_info=True)
         sys.exit(1)
+    finally:
+        # 确保资源被正确关闭
+        await engine.shutdown()
 
 
 if __name__ == "__main__":

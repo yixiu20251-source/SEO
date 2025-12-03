@@ -34,6 +34,9 @@ class HydraDomainDispatcher(DomainDispatcher):
             
         Returns:
             输出文件的相对路径（相对于 /dist）
+            
+        Raises:
+            ValueError: 如果检测到路径遍历攻击
         """
         output_config = project_config.get("output", {})
         base_path = output_config.get("path", "dist")
@@ -71,6 +74,18 @@ class HydraDomainDispatcher(DomainDispatcher):
             else:
                 # 默认使用完整 hostname
                 output_path = f"{base_path}/{hostname}/{path}"
+        
+        # 安全验证：防止路径遍历攻击
+        base_path_obj = Path(base_path).resolve()
+        safe_path_obj = Path(output_path).resolve()
+        
+        try:
+            # 检查解析后的路径是否在base_path内
+            safe_path_obj.relative_to(base_path_obj)
+        except ValueError:
+            # 路径不在base_path内，检测到路径遍历攻击
+            self.logger.error(f"Security Violation: Path Traversal detected - {output_path}")
+            raise ValueError(f"Security Violation: Path Traversal detected - attempted path: {output_path}")
         
         self.logger.debug(f"解析路径: {hostname}{path} -> {output_path}")
         return output_path

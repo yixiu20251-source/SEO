@@ -69,16 +69,46 @@ class MimicryContentStrategy(ContentStrategy):
                 system_role=f"你是一位{mask_context}领域的{persona}，擅长规划专业文章结构。"
             )
             
-            # 尝试解析 JSON（简化处理，实际应该更健壮）
+            # 使用正则表达式提取 JSON（更健壮的方法）
             import json
-            # 提取 JSON 部分（如果 LLM 返回了其他文本）
-            json_start = outline_text.find('{')
-            json_end = outline_text.rfind('}') + 1
-            if json_start >= 0 and json_end > json_start:
-                outline_json = json.loads(outline_text[json_start:json_end])
+            import re
+            
+            # 尝试多种方法提取 JSON
+            outline_json = None
+            
+            # 方法1: 尝试直接解析整个文本
+            try:
+                outline_json = json.loads(outline_text)
+            except json.JSONDecodeError:
+                pass
+            
+            # 方法2: 使用正则表达式匹配 JSON 对象
+            if outline_json is None:
+                # 匹配嵌套的 JSON 对象（支持简单嵌套）
+                json_pattern = r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}'
+                matches = re.findall(json_pattern, outline_text, re.DOTALL)
+                
+                for match in matches:
+                    try:
+                        outline_json = json.loads(match)
+                        break
+                    except json.JSONDecodeError:
+                        continue
+            
+            # 方法3: 尝试提取第一个 { 到最后一个 } 之间的内容
+            if outline_json is None:
+                json_start = outline_text.find('{')
+                json_end = outline_text.rfind('}') + 1
+                if json_start >= 0 and json_end > json_start:
+                    try:
+                        outline_json = json.loads(outline_text[json_start:json_end])
+                    except json.JSONDecodeError:
+                        pass
+            
+            if outline_json:
                 return outline_json
             else:
-                # 如果解析失败，返回简单结构
+                # 如果所有方法都失败，返回默认结构
                 self.logger.warning("无法解析 JSON 大纲，使用默认结构")
                 return {
                     "title": f"关于{keyword}的专业指南",

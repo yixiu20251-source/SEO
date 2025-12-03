@@ -6,11 +6,13 @@ import asyncio
 import json
 import os
 import sys
+import secrets
 from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
 
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, BackgroundTasks
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, BackgroundTasks, Depends, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -30,7 +32,31 @@ from plugins.templates.jinja_renderer import JinjaRenderer
 from plugins.domain.domain_dispatcher import HydraDomainDispatcher
 from modules.seo.traffic_filter import TrafficFilter
 
-app = FastAPI(title="Hydra Command Center", version="1.0.0")
+# HTTP Basic Authentication
+security = HTTPBasic()
+ADMIN_USER = os.getenv("ADMIN_USER", "admin")
+ADMIN_PASS = os.getenv("ADMIN_PASS", "hydra")
+
+
+def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
+    """验证HTTP Basic认证凭据"""
+    is_correct_username = secrets.compare_digest(credentials.username, ADMIN_USER)
+    is_correct_password = secrets.compare_digest(credentials.password, ADMIN_PASS)
+    
+    if not (is_correct_username and is_correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+
+app = FastAPI(
+    title="Hydra Command Center",
+    version="1.0.0",
+    dependencies=[Depends(check_auth)]  # 保护所有路由
+)
 
 # 模板和静态文件
 templates_dir = Path(__file__).parent / "templates"
