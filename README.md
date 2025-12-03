@@ -23,6 +23,18 @@ pip install -r requirements.txt
 python hydra.py --config config.yaml
 ```
 
+## Web 管理面板
+
+启动 Hydra Command Center（Web 管理界面）：
+
+```bash
+python start_admin.py
+# 或
+start_admin.bat
+```
+
+然后访问：http://localhost:8000
+
 ## 项目结构
 
 ```
