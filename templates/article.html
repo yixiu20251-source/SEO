@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<!-- Article Meta Tags -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="{{ page_title }}">
+<meta property="og:description" content="{{ page_description }}">
+{% if article_image %}<meta property="og:image" content="{{ article_image }}">{% endif %}
+{% endblock %}
+
+{% block content %}
+<article class="max-w-4xl mx-auto">
+    <!-- Article Header -->
+    <header class="mb-8">
+        <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            {{ article_title }}
+        </h1>
+        
+        <!-- Article Meta -->
+        <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-4">
+            {% if author_name %}
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                </svg>
+                <span>{{ author_name }}</span>
+            </div>
+            {% endif %}
+            
+            {% if publish_date %}
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path>
+                </svg>
+                <span>{{ publish_date }}</span>
+            </div>
+            {% endif %}
+            
+            {% if reading_time %}
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+                </svg>
+                <span>{{ reading_time }} 分钟阅读</span>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Author Bio (if available) -->
+        {% if author_bio %}
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 my-6">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-blue-200 rounded-full flex items-center justify-center">
+                        <span class="text-blue-600 font-semibold">{{ author_name[0] if author_name else 'A' }}</span>
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-lg font-semibold text-gray-900">{{ author_name }}</h3>
+                    <p class="text-sm text-gray-600 mt-1">{{ author_bio }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </header>
+    
+    <!-- Table of Contents (Desktop) -->
+    {% if toc %}
+    <aside class="hidden lg:block fixed right-8 top-24 w-64 bg-white p-4 rounded-lg shadow-lg border max-h-[calc(100vh-8rem)] overflow-y-auto">
+        <h2 class="text-lg font-semibold mb-4 text-gray-900">目录</h2>
+        <nav class="space-y-2">
+            {% for item in toc %}
+            <a href="#{{ item.id }}" class="block text-sm text-gray-600 hover:text-blue-600 transition {{ 'ml-4' if item.level > 1 else '' }}">
+                {{ item.title }}
+            </a>
+            {% endfor %}
+        </nav>
+    </aside>
+    {% endif %}
+    
+    <!-- Article Content -->
+    <div class="prose prose-lg max-w-none">
+        {{ article_content | safe }}
+    </div>
+    
+    <!-- Table of Contents (Mobile) -->
+    {% if toc %}
+    <div class="lg:hidden mt-8 bg-gray-50 p-4 rounded-lg">
+        <h2 class="text-lg font-semibold mb-4 text-gray-900">目录</h2>
+        <nav class="space-y-2">
+            {% for item in toc %}
+            <a href="#{{ item.id }}" class="block text-sm text-gray-600 hover:text-blue-600 transition">
+                {{ item.title }}
+            </a>
+            {% endfor %}
+        </nav>
+    </div>
+    {% endif %}
+    
+    <!-- Related Links -->
+    {% if related_links %}
+    <div class="mt-12 border-t pt-8">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-900">相关文章</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for link in related_links %}
+            <a href="{{ link.url }}" class="block p-4 bg-white rounded-lg shadow hover:shadow-md transition border border-gray-200">
+                <h3 class="font-semibold text-gray-900 mb-2">{{ link.title }}</h3>
+                {% if link.description %}
+                <p class="text-sm text-gray-600">{{ link.description }}</p>
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Last Updated -->
+    <div class="mt-8 text-sm text-gray-500 text-center">
+        <p>最后更新: {{ last_updated | default('2024-01-01') }}</p>
+    </div>
+</article>
+{% endblock %}
+

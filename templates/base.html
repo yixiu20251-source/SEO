@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    <title>{% block title %}{{ page_title | default('页面标题') }}{% endblock %}</title>
+    <meta name="description" content="{% block description %}{{ page_description | default('页面描述') }}{% endblock %}">
+    <meta name="keywords" content="{% block keywords %}{{ page_keywords | default('') }}{% endblock %}">
+    <meta name="author" content="{% block author %}{{ author_name | default('') }}{% endblock %}">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 自定义样式 -->
+    <style>
+        /* 确保移动端优先 */
+        @media (max-width: 640px) {
+            body { font-size: 16px; }
+        }
+    </style>
+    
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased">
+    <!-- Cookie Consent Banner -->
+    <div id="cookie-banner" class="fixed bottom-0 left-0 right-0 bg-gray-800 text-white p-4 shadow-lg z-50 md:flex md:items-center md:justify-between">
+        <div class="mb-2 md:mb-0">
+            <p class="text-sm">我们使用 Cookie 来改善您的浏览体验。继续浏览即表示您同意我们的 Cookie 政策。</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="acceptCookies()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm transition">
+                接受
+            </button>
+            <button onclick="declineCookies()" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded text-sm transition">
+                拒绝
+            </button>
+        </div>
+    </div>
+    
+    <!-- Navigation -->
+    {% block navigation %}
+    <nav class="bg-white shadow-md sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <a href="/" class="text-xl font-bold text-gray-800 hover:text-blue-600 transition">
+                    {{ site_name | default('网站名称') }}
+                </a>
+                <div class="hidden md:flex space-x-6">
+                    {% for nav_item in navigation | default([]) %}
+                    <a href="{{ nav_item.url }}" class="text-gray-700 hover:text-blue-600 transition">
+                        {{ nav_item.label }}
+                    </a>
+                    {% endfor %}
+                </div>
+                <button id="mobile-menu-btn" class="md:hidden text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t">
+            <div class="px-4 py-2 space-y-2">
+                {% for nav_item in navigation | default([]) %}
+                <a href="{{ nav_item.url }}" class="block py-2 text-gray-700 hover:text-blue-600">
+                    {{ nav_item.label }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </nav>
+    {% endblock %}
+    
+    <!-- Breadcrumbs -->
+    {% block breadcrumbs %}
+    {% if breadcrumbs %}
+    <div class="bg-gray-100 py-2">
+        <div class="container mx-auto px-4">
+            <nav class="flex" aria-label="Breadcrumb">
+                <ol class="flex items-center space-x-2 text-sm">
+                    {% for crumb in breadcrumbs %}
+                    <li class="flex items-center">
+                        {% if not loop.last %}
+                        <a href="{{ crumb.url }}" class="text-blue-600 hover:text-blue-800">
+                            {{ crumb.label }}
+                        </a>
+                        <svg class="w-4 h-4 mx-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        {% else %}
+                        <span class="text-gray-500">{{ crumb.label }}</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ol>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+    {% endblock %}
+    
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    {% block footer %}
+    <footer class="bg-gray-800 text-white mt-12">
+        <div class="container mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">关于我们</h3>
+                    <p class="text-gray-400 text-sm">{{ site_description | default('网站描述') }}</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">快速链接</h3>
+                    <ul class="space-y-2 text-sm">
+                        {% for nav_item in navigation | default([]) %}
+                        <li><a href="{{ nav_item.url }}" class="text-gray-400 hover:text-white transition">{{ nav_item.label }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">联系信息</h3>
+                    <p class="text-gray-400 text-sm">最后更新: {{ last_updated | default('2024-01-01') }}</p>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center text-sm text-gray-400">
+                <p>&copy; {{ current_year | default('2024') }} {{ site_name | default('网站名称') }}. 保留所有权利。</p>
+            </div>
+        </div>
+    </footer>
+    {% endblock %}
+    
+    <!-- JavaScript -->
+    <script>
+        // Cookie Consent
+        function acceptCookies() {
+            localStorage.setItem('cookieConsent', 'accepted');
+            document.getElementById('cookie-banner').style.display = 'none';
+        }
+        
+        function declineCookies() {
+            localStorage.setItem('cookieConsent', 'declined');
+            document.getElementById('cookie-banner').style.display = 'none';
+        }
+        
+        // 检查是否已同意 Cookie
+        if (localStorage.getItem('cookieConsent')) {
+            document.getElementById('cookie-banner').style.display = 'none';
+        }
+        
+        // Mobile Menu Toggle
+        document.getElementById('mobile-menu-btn')?.addEventListener('click', function() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>
+

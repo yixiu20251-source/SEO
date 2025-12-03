@@ -1,0 +1,65 @@
+# Hydra 配置文件示例
+# 复制此文件为 config.yaml 并修改相应配置
+
+# 项目基本信息
+project_name: "Hydra SEO Project"
+base_domain: "example.com"
+mode: "composite"  # composite 或 swarm
+
+# LLM 配置
+llm:
+  provider: "ollama"  # ollama 或 openai
+  model: "llama3"  # 模型名称
+  base_url: "http://localhost:11434"  # Ollama 地址（仅 Ollama 需要）
+  # api_key: "your-api-key"  # OpenAI API Key（仅 OpenAI 需要，或设置环境变量 OPENAI_API_KEY）
+  temperature: 0.7
+  max_tokens: 2048
+
+# 输出配置
+output:
+  path: "dist"  # 输出目录
+
+# 默认内容策略
+default_mask_context: "Industrial Machinery"  # 默认伪装上下文
+default_persona: "Senior Engineer"  # 默认人物角色
+
+# 域名拓扑配置（Composite Mode）
+topology:
+  - hostname: "example.com"
+    role: "LandingPage"
+    strategy: "Business Strategy"
+    mask_context: "Industrial Machinery"
+    persona: "Business Consultant"
+  
+  - hostname: "docs.example.com"
+    role: "Documentation"
+    strategy: "Technical Strategy"
+    mask_context: "Industrial Machinery"
+    persona: "Senior Engineer"
+  
+  - hostname: "blog.example.com"
+    role: "News"
+    strategy: "Blog Strategy"
+    mask_context: "Industrial Machinery"
+    persona: "Industry Analyst"
+
+# Swarm Mode 配置（当 mode 为 swarm 时使用）
+swarm:
+  keywords:
+    - "Game Server"
+    - "Cloud Hosting"
+    - "VPS Provider"
+  # 每个关键词会映射到 keyword.example.com
+
+# SEO 配置
+seo:
+  landing_page: "/"  # 默认着陆页
+  max_internal_links: 5  # 每页最大内部链接数
+  generate_sitemap: true  # 是否生成站点地图
+
+# 日志配置
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  file: "hydra.log"  # 日志文件路径（可选）
+  console: true  # 是否输出到控制台
+
