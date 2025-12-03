@@ -32,3 +32,10 @@ config.local.yaml
 .env
 .env.local
 
+# GitHub setup scripts (not needed in repo)
+push_to_github.ps1
+push_to_github.bat
+quick_setup.bat
+setup_and_push.ps1
+GITHUB_SETUP.md
+
