@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+
+{% block title %}Logs - Hydra Command Center{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <h1 class="text-3xl font-bold text-cyber-green cyber-glow mb-8">Log Viewer</h1>
+    
+    <div class="bg-dark-panel cyber-border rounded-lg p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold text-cyber-green">Real-time Logs</h2>
+            <button
+                id="clear-logs"
+                class="px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600 transition"
+            >
+                🗑️ Clear
+            </button>
+        </div>
+        
+        <!-- Log Console -->
+        <div
+            id="log-console"
+            class="bg-gray-900 text-cyber-green font-mono text-sm p-4 rounded border border-cyber-green/30 h-96 overflow-y-auto"
+            hx-get="/logs/tail?lines=100"
+            hx-trigger="every 2s"
+            hx-swap="innerHTML"
+        >
+            <div class="text-gray-500">Loading logs...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Custom log rendering
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        if (event.detail.target.id === 'log-console') {
+            const console = document.getElementById('log-console');
+            const response = JSON.parse(event.detail.xhr.responseText);
+            
+            if (response.lines) {
+                const html = response.lines.map(line => {
+                    let color = 'text-cyber-green';
+                    if (line.includes('ERROR') || line.includes('error')) {
+                        color = 'text-red-400';
+                    } else if (line.includes('WARNING') || line.includes('warning')) {
+                        color = 'text-yellow-400';
+                    } else if (line.includes('INFO') || line.includes('info')) {
+                        color = 'text-cyber-blue';
+                    }
+                    return `<div class="${color}">${escapeHtml(line)}</div>`;
+                }).join('');
+                console.innerHTML = html;
+                console.scrollTop = console.scrollHeight;
+            }
+        }
+    });
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    document.getElementById('clear-logs').addEventListener('click', function() {
+        document.getElementById('log-console').innerHTML = '<div class="text-gray-500">Logs cleared</div>';
+    });
+</script>
+{% endblock %}
+

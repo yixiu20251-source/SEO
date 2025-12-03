@@ -1,0 +1,177 @@
+{% extends "layout.html" %}
+
+{% block title %}Configuration - Hydra Command Center{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold text-cyber-green cyber-glow mb-8">Configuration</h1>
+    
+    <form
+        id="config-form"
+        hx-post="/settings/update"
+        hx-target="#save-result"
+        hx-swap="innerHTML"
+        class="space-y-6"
+    >
+        <!-- LLM Configuration -->
+        <div class="bg-dark-panel cyber-border rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-cyber-green mb-4">LLM Provider</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Provider</label>
+                    <select name="llm[provider]" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200">
+                        <option value="ollama" {% if config.get('llm', {}).get('provider') == 'ollama' %}selected{% endif %}>Ollama (Local)</option>
+                        <option value="openai" {% if config.get('llm', {}).get('provider') == 'openai' %}selected{% endif %}>OpenAI (Cloud)</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
+                    <input
+                        type="text"
+                        name="llm[model]"
+                        value="{{ config.get('llm', {}).get('model', 'llama3') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Base URL (Ollama only)</label>
+                    <input
+                        type="text"
+                        name="llm[base_url]"
+                        value="{{ config.get('llm', {}).get('base_url', 'http://localhost:11434') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                    >
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cloudflare Configuration -->
+        <div class="bg-dark-panel cyber-border rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-cyber-green mb-4">Cloudflare</h2>
+            
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium text-gray-300">Enabled</label>
+                    <label class="toggle-switch">
+                        <input
+                            type="checkbox"
+                            name="cloudflare[enabled]"
+                            {% if config.get('cloudflare', {}).get('enabled') %}checked{% endif %}
+                            hx-post="/toggle/cloudflare.enabled"
+                            hx-trigger="change"
+                            hx-vals='{"value": this.checked}'
+                        >
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium text-gray-300">Proxied</label>
+                    <label class="toggle-switch">
+                        <input
+                            type="checkbox"
+                            name="cloudflare[proxied]"
+                            {% if config.get('cloudflare', {}).get('proxied') %}checked{% endif %}
+                            hx-post="/toggle/cloudflare.proxied"
+                            hx-trigger="change"
+                            hx-vals='{"value": this.checked}'
+                        >
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">API Token</label>
+                    <input
+                        type="password"
+                        name="cloudflare[api_token]"
+                        value="{{ config.get('cloudflare', {}).get('api_token', '') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                        placeholder="YOUR_CF_TOKEN"
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Zone ID</label>
+                    <input
+                        type="text"
+                        name="cloudflare[zone_id]"
+                        value="{{ config.get('cloudflare', {}).get('zone_id', '') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                        placeholder="YOUR_ZONE_ID"
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Server IP</label>
+                    <input
+                        type="text"
+                        name="cloudflare[server_ip]"
+                        value="{{ config.get('cloudflare', {}).get('server_ip', '') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                        placeholder="YOUR_VPS_IP"
+                    >
+                </div>
+            </div>
+        </div>
+        
+        <!-- SEO Configuration -->
+        <div class="bg-dark-panel cyber-border rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-cyber-green mb-4">SEO Settings</h2>
+            
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium text-gray-300">Generate Sitemap</label>
+                    <label class="toggle-switch">
+                        <input
+                            type="checkbox"
+                            name="seo[generate_sitemap]"
+                            {% if config.get('seo', {}).get('generate_sitemap') %}checked{% endif %}
+                            hx-post="/toggle/seo.generate_sitemap"
+                            hx-trigger="change"
+                            hx-vals='{"value": this.checked}'
+                        >
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Landing Page</label>
+                    <input
+                        type="text"
+                        name="seo[landing_page]"
+                        value="{{ config.get('seo', {}).get('landing_page', '/') }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Max Internal Links</label>
+                    <input
+                        type="number"
+                        name="seo[max_internal_links]"
+                        value="{{ config.get('seo', {}).get('max_internal_links', 5) }}"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-gray-200"
+                    >
+                </div>
+            </div>
+        </div>
+        
+        <!-- Save Button -->
+        <div class="flex justify-end">
+            <button
+                type="submit"
+                class="px-6 py-3 bg-cyber-green text-black font-semibold rounded hover:bg-cyber-green/80 transition"
+            >
+                💾 Save Configuration
+            </button>
+        </div>
+        
+        <div id="save-result"></div>
+    </form>
+</div>
+{% endblock %}
+
