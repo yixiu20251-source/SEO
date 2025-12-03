@@ -19,10 +19,12 @@ from core.pipeline import Pipeline
 from plugins.llm.factory import LLMFactory
 from plugins.templates.jinja_renderer import JinjaRenderer
 from plugins.domain.domain_dispatcher import HydraDomainDispatcher
+from plugins.domain.cloudflare_manager import CloudflareManager
 
 # 导入业务逻辑
 from modules.mimicry.content_strategy import MimicryContentStrategy
 from modules.seo.link_mesh import LinkMesh
+from modules.seo.traffic_filter import TrafficFilter
 from modules.seo.seo_data_builder import SEODataBuilder
 from modules.seo.nginx_generator import NginxGenerator
 from modules.content.markdown_converter import MarkdownConverter
@@ -49,6 +51,7 @@ class HydraEngine:
         self.template_renderer = None
         self.domain_dispatcher = None
         self.link_mesh = LinkMesh()
+        self.traffic_filter = None  # 将在 initialize 中根据配置初始化
         self.seo_builder = SEODataBuilder()
         self.markdown_converter = MarkdownConverter()
     
@@ -82,6 +85,11 @@ class HydraEngine:
         
         # 初始化域名分发器
         self.domain_dispatcher = HydraDomainDispatcher()
+        
+        # 初始化流量过滤器
+        landing_page = self.config.get("seo", {}).get("landing_page", "/")
+        self.traffic_filter = TrafficFilter(landing_page=landing_page)
+        self.logger.info(f"流量过滤器已初始化，着陆页: {landing_page}")
         
         self.logger.info("所有组件初始化完成")
     
@@ -394,16 +402,84 @@ class HydraEngine:
             # 保存页面
             self.save_page(html, plan["hostname"], plan["path"])
         
+        # Cloudflare DNS 自动化（如果启用）
+        cloudflare_config = self.config.get("cloudflare", {})
+        if cloudflare_config.get("enabled", False):
+            await self._setup_cloudflare_dns(page_plans, cloudflare_config)
+        
         # 生成 Nginx 配置
         topology = self.domain_dispatcher.get_topology_config(self.config)
         nginx_gen = NginxGenerator()
+        
+        # 获取 TrafficFilter 的 404 处理配置
+        nginx_404_handler = self.traffic_filter.generate_nginx_404_handler()
+        
         nginx_gen.generate_config(
             self.config,
             topology,
-            "nginx.conf"
+            "nginx.conf",
+            traffic_filter=self.traffic_filter,
+            extra_conf=nginx_404_handler
         )
         
         self.logger.info("站点生成完成！")
+    
+    async def _setup_cloudflare_dns(
+        self,
+        page_plans: List[Dict[str, Any]],
+        cloudflare_config: Dict[str, Any]
+    ):
+        """
+        设置 Cloudflare DNS 记录
+        
+        Args:
+            page_plans: 页面规划列表
+            cloudflare_config: Cloudflare 配置
+        """
+        self.logger.info("=" * 60)
+        self.logger.info("Cloudflare DNS 自动化")
+        self.logger.info("=" * 60)
+        
+        try:
+            api_token = cloudflare_config.get("api_token")
+            zone_id = cloudflare_config.get("zone_id")
+            email = cloudflare_config.get("email")
+            server_ip = cloudflare_config.get("server_ip")
+            proxied = cloudflare_config.get("proxied", True)
+            
+            if not all([api_token, zone_id, email, server_ip]):
+                self.logger.warning("Cloudflare 配置不完整，跳过 DNS 设置")
+                return
+            
+            async with CloudflareManager(api_token, zone_id, email) as cf_manager:
+                # 健康检查
+                if not await cf_manager.health_check():
+                    self.logger.error("Cloudflare API 连接失败")
+                    return
+                
+                # 收集唯一的 hostname
+                unique_hostnames = set()
+                for plan in page_plans:
+                    hostname = plan.get("hostname")
+                    if hostname:
+                        unique_hostnames.add(hostname)
+                
+                # 为每个唯一的 hostname 创建 DNS 记录
+                for hostname in unique_hostnames:
+                    success = await cf_manager.add_dns_record(
+                        hostname=hostname,
+                        ip_address=server_ip,
+                        proxied=proxied
+                    )
+                    if success:
+                        self.logger.info(f"✓ DNS 记录已设置: {hostname}")
+                    else:
+                        self.logger.warning(f"✗ DNS 记录设置失败: {hostname}")
+                
+                self.logger.info(f"Cloudflare DNS 设置完成: {len(unique_hostnames)} 个记录")
+                
+        except Exception as e:
+            self.logger.error(f"Cloudflare DNS 设置异常: {e}", exc_info=True)
 
 
 async def main():

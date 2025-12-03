@@ -3,6 +3,7 @@
 """
 
 from .domain_dispatcher import HydraDomainDispatcher
+from .cloudflare_manager import CloudflareManager
 
-__all__ = ['HydraDomainDispatcher']
+__all__ = ['HydraDomainDispatcher', 'CloudflareManager']
 

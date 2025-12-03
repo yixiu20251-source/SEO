@@ -18,7 +18,9 @@ class NginxGenerator:
         self,
         project_config: Dict[str, Any],
         topology: List[Dict[str, Any]],
-        output_path: str = "nginx.conf"
+        output_path: str = "nginx.conf",
+        traffic_filter = None,
+        extra_conf: str = ""
     ) -> str:
         """
         生成完整的 Nginx 配置文件
@@ -47,7 +49,9 @@ class NginxGenerator:
             config_lines.append(self._generate_wildcard_server(
                 base_domain,
                 output_dir,
-                topology
+                topology,
+                traffic_filter,
+                extra_conf
             ))
         else:
             # Composite Mode: 为每个域名生成单独的服务器块
@@ -57,7 +61,9 @@ class NginxGenerator:
                     config_lines.append(self._generate_single_server(
                         hostname,
                         output_dir,
-                        topo
+                        topo,
+                        traffic_filter,
+                        extra_conf
                     ))
                     config_lines.append("")
         
@@ -95,7 +101,9 @@ server {{
         self,
         base_domain: str,
         output_dir: str,
-        topology: List[Dict[str, Any]]
+        topology: List[Dict[str, Any]],
+        traffic_filter = None,
+        extra_conf: str = ""
     ) -> str:
         """
         生成通配符服务器块（Swarm Mode）
@@ -104,10 +112,18 @@ server {{
             base_domain: 基础域名
             output_dir: 输出目录
             topology: 拓扑配置
+            traffic_filter: TrafficFilter 实例
+            extra_conf: 额外的配置内容（如 404 处理）
             
         Returns:
             通配符服务器块配置
         """
+        # 生成 404 处理配置
+        if extra_conf:
+            error_handler = extra_conf
+        else:
+            error_handler = self._generate_404_handler(traffic_filter, f"https://{base_domain}/")
+        
         return f"""# HTTPS 服务器 - 通配符模式 (Swarm Mode)
 server {{
     listen 443 ssl http2;
@@ -116,9 +132,9 @@ server {{
     # 使用正则表达式捕获子域名
     server_name ~^(?<subdomain>.+)\\.{base_domain.replace('.', '\\.')}$;
     
-    # SSL 配置（需要替换为实际证书路径）
-    ssl_certificate /etc/nginx/ssl/{base_domain}/fullchain.pem;
-    ssl_certificate_key /etc/nginx/ssl/{base_domain}/privkey.pem;
+    # SSL 配置 - Cloudflare Origin CA
+    ssl_certificate /etc/nginx/ssl/origin.pem;
+    ssl_certificate_key /etc/nginx/ssl/origin.key;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
     
@@ -147,9 +163,7 @@ server {{
         }}
     }}
     
-    # 404 处理 - 重定向到主域名
-    error_page 404 =301 https://{base_domain}/;
-    
+{error_handler}
     # 安全头
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
@@ -160,7 +174,9 @@ server {{
         self,
         hostname: str,
         output_dir: str,
-        topo_config: Dict[str, Any]
+        topo_config: Dict[str, Any],
+        traffic_filter = None,
+        extra_conf: str = ""
     ) -> str:
         """
         生成单个域名服务器块（Composite Mode）
@@ -169,19 +185,27 @@ server {{
             hostname: 主机名
             output_dir: 输出目录
             topo_config: 拓扑配置
+            traffic_filter: TrafficFilter 实例
+            extra_conf: 额外的配置内容（如 404 处理）
             
         Returns:
             单个服务器块配置
         """
+        # 生成 404 处理配置
+        if extra_conf:
+            error_handler = extra_conf
+        else:
+            error_handler = self._generate_404_handler(traffic_filter, "/")
+        
         return f"""# HTTPS 服务器 - {hostname}
 server {{
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
     server_name {hostname};
     
-    # SSL 配置（需要替换为实际证书路径）
-    ssl_certificate /etc/nginx/ssl/{hostname}/fullchain.pem;
-    ssl_certificate_key /etc/nginx/ssl/{hostname}/privkey.pem;
+    # SSL 配置 - Cloudflare Origin CA
+    ssl_certificate /etc/nginx/ssl/origin.pem;
+    ssl_certificate_key /etc/nginx/ssl/origin.key;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
     
@@ -210,39 +234,27 @@ server {{
         }}
     }}
     
-    # 404 处理
-    error_page 404 =301 /;
-    
+{error_handler}
     # 安全头
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
 }}"""
     
-    def generate_ssl_setup_script(self, base_domain: str) -> str:
+    def _generate_404_handler(self, traffic_filter, default_redirect: str) -> str:
         """
-        生成 SSL 证书设置脚本（使用 Let's Encrypt）
+        生成 404 处理配置
         
         Args:
-            base_domain: 基础域名
+            traffic_filter: TrafficFilter 实例
+            default_redirect: 默认重定向目标
             
         Returns:
-            Shell 脚本内容
+            404 处理配置片段
         """
-        script = f"""#!/bin/bash
-# SSL 证书设置脚本 - {base_domain}
-
-# 安装 Certbot（如果未安装）
-# sudo apt-get update
-# sudo apt-get install certbot python3-certbot-nginx
-
-# 为通配符域名申请证书（需要 DNS 验证）
-# certbot certonly --manual --preferred-challenges dns -d {base_domain} -d *.{base_domain}
-
-# 或者为单个域名申请证书
-# certbot --nginx -d {base_domain}
-
-echo "SSL 证书设置完成"
-"""
-        return script
+        if traffic_filter:
+            return traffic_filter.generate_nginx_404_handler()
+        else:
+            return f"    # 404 处理 - 重定向到默认页面\n    error_page 404 =301 {default_redirect};"
+    
 
